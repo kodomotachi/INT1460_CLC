@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:posturer_v02/main.dart';
+import 'package:posturer_v04/main.dart';
 
 void main() {
   testWidgets('App shows main navigation', (

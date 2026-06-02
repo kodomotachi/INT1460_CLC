@@ -96,7 +96,7 @@ class _HistoryRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${entry.timestampMs} ms',
+            _formatTimestamp(entry.timestampMs),
             style: const TextStyle(
               color: Color(0xFF5D6B5D),
               fontSize: 13,
@@ -105,5 +105,16 @@ class _HistoryRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatTimestamp(int timestampMs) {
+    final Duration duration = Duration(milliseconds: timestampMs);
+    final int hours = duration.inHours;
+    final int minutes = duration.inMinutes.remainder(60);
+    final int seconds = duration.inSeconds.remainder(60);
+
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+
+    return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 }
