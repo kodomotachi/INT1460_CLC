@@ -4,18 +4,22 @@ import 'package:flutter/widgets.dart';
 
 import '../models/posture_entry.dart';
 import '../models/posture_view_state.dart';
+import '../notifications/posture_notification_service.dart';
 import '../supabase/supabase_service.dart';
 
-class PostureRepository extends ChangeNotifier {
+class PostureRepository extends ChangeNotifier with WidgetsBindingObserver {
   PostureRepository._();
 
   static final PostureRepository instance = PostureRepository._();
 
   final SupabaseService _supabaseService = SupabaseService();
+  final PostureNotificationService _notificationService =
+      PostureNotificationService.instance;
 
   Timer? _cooldownTimer;
   Timer? _pollTimer;
   bool _started = false;
+  bool _observingLifecycle = false;
   bool _cooldownCompleted = false;
   bool _refreshInProgress = false;
   List<PostureEntry> _history = const <PostureEntry>[];
@@ -54,6 +58,11 @@ class PostureRepository extends ChangeNotifier {
     }
 
     _started = true;
+    if (!_isWidgetTestBinding()) {
+      WidgetsBinding.instance.addObserver(this);
+      _observingLifecycle = true;
+      unawaited(_notificationService.initialize());
+    }
     notifyListeners();
 
     if (_isWidgetTestBinding()) {
@@ -84,6 +93,7 @@ class PostureRepository extends ChangeNotifier {
       _history = await _supabaseService.fetchHistory(limit: 25);
       _lastErrorMessage = null;
       _lastUpdatedAt = DateTime.now();
+      unawaited(_notificationService.handleLatestPosture(latestPosture));
     } on Exception catch (error) {
       _lastErrorMessage = '$error';
       debugPrint('Posture refresh failed: $error');
@@ -94,9 +104,20 @@ class PostureRepository extends ChangeNotifier {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _notificationService.setAppInForeground(
+      state == AppLifecycleState.resumed,
+    );
+  }
+
+  @override
   void dispose() {
     _cooldownTimer?.cancel();
     _pollTimer?.cancel();
+    if (_observingLifecycle) {
+      WidgetsBinding.instance.removeObserver(this);
+      _observingLifecycle = false;
+    }
     super.dispose();
   }
 }

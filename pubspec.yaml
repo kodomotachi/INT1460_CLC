@@ -1,4 +1,4 @@
-name: posturer_v02
+name: posturer_v04
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   audioplayers: ^6.4.0
   http: ^1.2.2
+  flutter_local_notifications: ^21.0.0
 
 dev_dependencies:
   flutter_test:
