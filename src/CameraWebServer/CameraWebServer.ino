@@ -7,10 +7,97 @@
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
-const char *ssid = "Tachi";
-const char *password = "Huy27022004";
+const char *ssid = "ManhHung";
+const char *password = "baanhkhoa";
+const char *apSsid = "ESP32-CAM-Posturer";
+const char *apPassword = "12345678";
 
 void startCameraServer();
+
+const char *wifiStatusName(wl_status_t status) {
+  switch (status) {
+    case WL_IDLE_STATUS:
+      return "idle";
+    case WL_NO_SSID_AVAIL:
+      return "ssid not found";
+    case WL_SCAN_COMPLETED:
+      return "scan completed";
+    case WL_CONNECTED:
+      return "connected";
+    case WL_CONNECT_FAILED:
+      return "connect failed";
+    case WL_CONNECTION_LOST:
+      return "connection lost";
+    case WL_DISCONNECTED:
+      return "disconnected";
+    default:
+      return "unknown";
+  }
+}
+
+bool connectToWiFi() {
+  WiFi.persistent(false);
+  WiFi.disconnect(true, true);
+  delay(500);
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+
+  Serial.printf("Scanning for WiFi SSID: %s\n", ssid);
+  int networkCount = WiFi.scanNetworks();
+  Serial.printf("Found %d WiFi network(s):\n", networkCount);
+
+  bool foundTarget = false;
+  for (int i = 0; i < networkCount; i++) {
+    Serial.printf("  %d. %s, RSSI: %d dBm, channel: %d\n", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
+    if (WiFi.SSID(i) == ssid) {
+      foundTarget = true;
+    }
+  }
+
+  if (!foundTarget) {
+    Serial.println("Target SSID was not found during scan. Check spelling, 2.4 GHz support, and hotspot visibility.");
+  }
+
+  Serial.print("WiFi connecting");
+  WiFi.begin(ssid, password);
+  unsigned long wifiStart = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 30000) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi connected");
+    Serial.print("Camera Ready! Open: http://");
+    Serial.println(WiFi.localIP());
+    return true;
+  }
+
+  Serial.print("WiFi failed: ");
+  Serial.println(wifiStatusName(WiFi.status()));
+  return false;
+}
+
+void startFallbackAccessPoint() {
+  WiFi.disconnect(true, true);
+  delay(500);
+  WiFi.mode(WIFI_AP);
+  WiFi.setSleep(false);
+
+  if (!WiFi.softAP(apSsid, apPassword)) {
+    Serial.println("Failed to start fallback AP.");
+    return;
+  }
+
+  Serial.println("Started fallback WiFi access point.");
+  Serial.print("Connect your Mac/iPhone to WiFi: ");
+  Serial.println(apSsid);
+  Serial.print("Password: ");
+  Serial.println(apPassword);
+  Serial.print("Camera Ready! Open: http://");
+  Serial.println(WiFi.softAPIP());
+}
 
 void setup() {
   Serial.begin(115200);
@@ -18,7 +105,7 @@ void setup() {
   Serial.println();
 
   // ===== Camera config =====
-  camera_config_t config;
+  camera_config_t config = {};
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer   = LEDC_TIMER_0;
   config.pin_d0       = Y2_GPIO_NUM;
@@ -64,30 +151,12 @@ void setup() {
   s->set_contrast(s, 0);
 
   // ===== WiFi =====
-  WiFi.disconnect(true);
-  delay(100);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  WiFi.setSleep(false);
-
-  Serial.print("WiFi connecting");
-  unsigned long wifiStart = millis();
-  while (WiFi.status() != WL_CONNECTED) {
-    if (millis() - wifiStart > 15000) {
-      Serial.println("\n❌ WiFi timeout — restarting...");
-      ESP.restart();
-    }
-    delay(500);
-    Serial.print(".");
+  if (!connectToWiFi()) {
+    startFallbackAccessPoint();
   }
-  Serial.println();
-  Serial.println("✅ WiFi connected");
 
   // ===== Start server =====
   startCameraServer();
-
-  Serial.print("📷 Camera Ready! Open: http://");
-  Serial.println(WiFi.localIP());
 }
 
 void loop() {
