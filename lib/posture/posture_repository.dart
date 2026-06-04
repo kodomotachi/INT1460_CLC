@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../models/posture_entry.dart';
 import '../models/posture_view_state.dart';
+import '../notifications/android_background_posture_service.dart';
 import '../notifications/posture_notification_service.dart';
 import '../supabase/supabase_service.dart';
 
@@ -105,6 +106,13 @@ class PostureRepository extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(AndroidBackgroundPostureService.stop());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      unawaited(AndroidBackgroundPostureService.start());
+    }
+
     _notificationService.setAppInForeground(
       state == AppLifecycleState.resumed,
     );

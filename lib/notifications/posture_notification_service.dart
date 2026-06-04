@@ -71,21 +71,17 @@ class PostureNotificationService {
     _lastPostureTimestampMs = entry.timestampMs;
 
     final bool isNewEvent = previousTimestampMs != entry.timestampMs;
-    final bool postureChanged =
-        previousValue != null && previousValue != entry.isGoodPosture;
-    if (_appInForeground || !isNewEvent || !postureChanged) {
+    final bool changedGoodToBad =
+        previousValue == true && !entry.isGoodPosture;
+    if (_appInForeground || !isNewEvent || !changedGoodToBad) {
       return;
     }
 
     await initialize();
-    await _showPostureChange(entry.isGoodPosture);
+    await _showBadPostureNotification();
   }
 
-  Future<void> _showPostureChange(bool isGoodPosture) {
-    final String body = isGoodPosture
-        ? 'Your posture changed to good.'
-        : 'Your posture changed to bad. Sit upright.';
-
+  Future<void> _showBadPostureNotification() {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       _channelId,
@@ -105,7 +101,7 @@ class PostureNotificationService {
     return _notifications.show(
       id: _notificationId,
       title: 'Posture changed',
-      body: body,
+      body: 'Your posture changed to bad. Sit upright.',
       notificationDetails: details,
     );
   }
